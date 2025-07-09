@@ -6,7 +6,7 @@ import asyncio
 
 
 # Initialize FastMCP and load environment variables
-mcp = FastMCP("search")
+mcp = FastMCP("search", host="localhost")
 load_dotenv()
 
 USER_AGENT = "search-app/1.0"
