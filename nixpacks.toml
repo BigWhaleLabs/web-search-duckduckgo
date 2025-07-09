@@ -1,0 +1,18 @@
+[phases.setup]
+nixPkgs = ["python3", "python3Packages.pip"]
+
+[phases.install]
+cmds = ["pip install ."]
+
+[phases.build]
+cmds = ["echo 'Build phase completed'"]
+
+[start]
+cmd = "python main.py"
+
+[variables]
+PYTHONPATH = "/app"
+PYTHON_VERSION = "3.11"
+
+[providers]
+python = "3.11"
