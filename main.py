@@ -57,26 +57,61 @@ async def search_duckduckgo(query: str, limit: int) -> list:
     
 
 async def fetch_url(url: str):
-    jina_timeout = 15.0
-    raw_html_timeout = 5.0
-    url = f"https://r.jina.ai/{url}"
-    async with httpx.AsyncClient() as client:
+    """Fetch and extract clean text content from a webpage"""
+    timeout = 15.0
+    
+    # Add https:// prefix if missing
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+    
+    # Headers to mimic a real browser
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+    }
+    
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         try:
-            print(f"fetching result from\n{url}")
-            response = await client.get(url, timeout=jina_timeout)
-            """ using jina api to convert html to markdown """
-            text = response.text
-            return text
-        except httpx.TimeoutException:
-            try:
-                print("Jina API timed out, fetching raw HTML...")
-                response = await client.get(url, timeout=raw_html_timeout)
-                """ using raw html """
-                soup = BeautifulSoup(response.text, "html.parser")
+            print(f"Fetching content from: {url}")
+            response = await client.get(url, headers=headers, timeout=timeout)
+            response.raise_for_status()
+            
+            # Parse HTML and extract clean text
+            soup = BeautifulSoup(response.text, "html.parser")
+            
+            # Remove script and style elements
+            for script in soup(["script", "style", "nav", "header", "footer", "aside"]):
+                script.decompose()
+            
+            # Try to find main content areas first
+            main_content = soup.find('main') or soup.find('article') or soup.find('div', class_=['content', 'main', 'post', 'article'])
+            
+            if main_content:
+                text = main_content.get_text()
+            else:
                 text = soup.get_text()
-                return text
-            except httpx.TimeoutException:
-                return "Timeout error"
+            
+            # Clean up the text
+            lines = (line.strip() for line in text.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            text = ' '.join(chunk for chunk in chunks if chunk)
+            
+            # Limit text length to avoid extremely long responses
+            if len(text) > 10000:
+                text = text[:10000] + "... [content truncated]"
+            
+            return text
+            
+        except httpx.TimeoutException:
+            return "Error: Request timed out while fetching the webpage"
+        except httpx.HTTPStatusError as e:
+            return f"Error: HTTP {e.response.status_code} - {e.response.reason_phrase}"
+        except Exception as e:
+            return f"Error: Failed to fetch webpage - {str(e)}"
 
 @mcp.tool()
 async def search_and_fetch(query: str, limit: int = 3):
@@ -154,13 +189,13 @@ async def search(query: str, limit: int = 3):
 @mcp.tool()
 async def fetch(url: str):
     """
-    scrape the html content and return the markdown format using jina api.
+    Scrape the HTML content and return clean text content from a webpage.
 
     Args:
-        url: The search query string
+        url: The URL to fetch and extract content from
 
     Returns:
-        text : html in markdown format 
+        text: Clean text content extracted from the webpage
     """
     if not isinstance(url, str):
         raise ValueError("Query must be a non-empty string")
@@ -173,7 +208,7 @@ def test_fetch_url():
     import asyncio
     async def run_test():
         # Mocking. In a real test, you would mock this, but for this example, we will call a real url.
-        result = await fetch_url("communityforums.atmeta.com/t5/Get-Help/Beat-saber-wont-load/td-p/1187498")
+        result = await fetch_url("https://github.com/BigWhaleLabs/web-search-duckduckgo/tree/master")
         # In a real test you would assert the returned result with a known good result.
         # For this example, we will just test that a result is returned.
         assert isinstance(result, str)
@@ -189,5 +224,5 @@ def test_fetch_url():
 
 if __name__ == "__main__":
     # Required packages: pip install mcp httpx beautifulsoup4 python-dotenv
-    mcp.run(transport="http")
+    mcp.run(transport="streamable-http")
     # test_fetch_url()
