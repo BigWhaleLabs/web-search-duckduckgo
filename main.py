@@ -189,5 +189,5 @@ def test_fetch_url():
 
 if __name__ == "__main__":
     # Required packages: pip install mcp httpx beautifulsoup4 python-dotenv
-    mcp.run(transport="stdio")
+    mcp.run(transport="http")
     # test_fetch_url()
