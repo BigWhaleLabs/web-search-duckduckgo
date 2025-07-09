@@ -1,14 +1,14 @@
 [phases.setup]
-nixPkgs = ["python3", "python3Packages.pip"]
+nixPkgs = ["python3", "python3Packages.pip", "uv"]
 
 [phases.install]
-cmds = ["pip install ."]
+cmds = ["uv sync"]
 
 [phases.build]
 cmds = ["echo 'Build phase completed'"]
 
 [start]
-cmd = "python main.py"
+cmd = "uv run main.py"
 
 [variables]
 PYTHONPATH = "/app"
