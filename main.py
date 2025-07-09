@@ -7,8 +7,6 @@ import asyncio
 
 # Initialize FastMCP and load environment variables
 mcp = FastMCP("search", host="0.0.0.0", port=3000, stateless_http=True)
-# Disable session delete endpoint to fix OpenAI MCP compatibility issues
-mcp.app.delete = None
 load_dotenv()
 
 USER_AGENT = "search-app/1.0"
